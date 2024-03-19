@@ -283,4 +283,48 @@ describe('spf-check', () => {
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
+
+    it('returns Pass when INCLUDE mechanism is resolved and match expected include', async () => {
+        const resolve = spyOn(dns, 'resolve');
+
+        await resolve.withArgs('example.com', 'TXT', jasmine.any(Function)).and.callFake((_0, _1, callback) => {
+            callback(null, [['v=spf1 include:_spf.example.com']]);
+        });
+
+        await resolve.withArgs('_spf.example.com', 'TXT', jasmine.any(Function)).and.callFake((_0, _1, callback) => {
+            callback(null, [['v=spf1 +all']]);
+        });
+
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+
+        expect(resolve).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns Pass when INCLUDE mechanism is resolved and match expected include', async () => {
+        const resolve = spyOn(dns, 'resolve');
+
+        await resolve.withArgs('example.com', 'TXT', jasmine.any(Function)).and.callFake((_0, _1, callback) => {
+            callback(null, [['v=spf1 include:_spf1.example.com']]);
+        });
+
+        await resolve.withArgs('_spf1.example.com', 'TXT', jasmine.any(Function)).and.callFake((_0, _1, callback) => {
+            callback(null, [['v=spf1 include:_spf2.example.com']]);
+        });
+
+        await resolve.withArgs('_spf2.example.com', 'TXT', jasmine.any(Function)).and.callFake((_0, _1, callback) => {
+            callback(null, [ [ 'v=spf1 ip4:127.0.0.1' ] ]);
+        });
+
+        let s = new spf.SPF('example.com');
+        await expectAsync(s.checkInclude('_spf1.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Pass}));
+
+        expect(resolve).toHaveBeenCalledTimes(1);
+        resolve.calls.reset()
+
+        await expectAsync(s.checkInclude('_spf2.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Pass}));
+
+        expect(resolve).toHaveBeenCalledTimes(2);
+
+        await expectAsync(s.checkInclude('_spf3.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Fail}));
+    });
 });
