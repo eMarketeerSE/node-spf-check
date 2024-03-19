@@ -17,6 +17,7 @@ const messages = {
     SoftFail: 'Domain believes the host is not authorized but is not willing to make that strong of a statement',
     TempError: 'Encountered a transient error while performing the check',
     PermError: 'Domain\'s published records could not be correctly interpreted',
+    FailInclude: 'Domain\'s published records does not include the SPF include record',
 };
 
 /** Result values (ex. {None: 'None', Neutral: 'Neutral', ...}). */
@@ -251,6 +252,30 @@ class SPF {
         return resolved;
     }
 
+
+
+    async getMechanisms(rrtype) {
+        // List of parsed mechanisms done by `spf-parse` module. Each value is
+        // an object that contains type and value.
+        let mechanisms;
+        try {
+            mechanisms = await this.resolveSPF(this.domain, rrtype);
+        } catch (err) {
+            if (err instanceof SPFResult) {
+                return err;
+            }
+
+            throw new SPFResult(results.TempError, err.message);
+        }
+
+        if (mechanisms.length === 0) {
+            // This is a last minute check that may never get called because
+            // there should always be the version mechanism.
+            throw new SPFResult(results.TempError, 'No mechanisms found');
+        }
+        return mechanisms;
+    }
+
     async check(ip) {
         if (!ipaddr.isValid(ip)) {
             return new SPFResult(results.None, 'Malformed IP for comparison');
@@ -259,36 +284,11 @@ class SPF {
         if (!tlsjs.isValid(this.domain)) {
             return new SPFResult(results.None, 'No SPF record can be found on malformed domain');
         }
-
-        // List of parsed mechanisms done by `spf-parse` module. Each value is
-        // an object that contains type and value.
-        let mechanisms;
-
         // Parsed IP address.
         const addr = ipaddr.parse(ip);
 
         try {
-            mechanisms = await this.resolveSPF(this.domain,
-                // When any mechanism fetches host addresses to compare with
-                // given IP, when it is an IPv4 address, A records are fetched,
-                // when it is an IPv6 address, AAAA records are fetched instead.
-                addr.kind() === 'ipv4' ? 'A' : 'AAAA'
-            );
-        } catch (err) {
-            if (err instanceof SPFResult) {
-                return err;
-            }
-
-            return new SPFResult(results.TempError, err.message);
-        }
-
-        if (mechanisms.length === 0) {
-            // This is a last minute check that may never get called because
-            // there should always be the version mechanism.
-            return new SPFResult(results.TempError);
-        }
-
-        try {
+            let mechanisms = await this.getMechanisms(addr.kind() === 'ipv4' ? 'A' : 'AAAA')
             return await this.evaluate(mechanisms, addr);
         } catch (err) {
             if (err instanceof SPFResult) {
@@ -331,6 +331,67 @@ class SPF {
         // just as if "?all" were specified as the last directive.
         return new SPFResult(results.Neutral);
     }
+
+
+
+    async checkInclude(domain) {
+        if (!tlsjs.isValid(this.domain)) {
+            return new SPFResult(results.None, 'No SPF record can be found on malformed domain');
+        }
+
+        try {
+            let mechanisms = await this.getMechanisms('A')
+            return await this.evaluateInclude(mechanisms, domain);
+        } catch (err) {
+            if (err instanceof SPFResult) {
+                return err;
+            }
+
+            return new SPFResult(results.PermError, err.message);
+        }
+    }
+
+    async evaluateInclude(mechanisms, domain) {
+        const includeMechanisms = mechanisms.filter(m => m.type === 'include')
+        if (includeMechanisms.length === 0) {
+            return new SPFResult(results.FailInclude);
+        }
+        for (let i = 0; i < includeMechanisms.length; i++) {
+            const mechanism = includeMechanisms[i];
+            if (mechanism.value === domain) {
+                return new SPFResult(results.Pass);
+            }
+            if (!this.options.prefetch && mechanism.resolve) {
+                _.assign(mechanism, await mechanism.resolve());
+            }
+
+            if (mechanism.type === 'include') {
+                mechanism.evaluated = await this.evaluateInclude(mechanism.includes, domain);
+            }
+
+            if (mechanism.evaluated.result === results.None) {
+                throw new SPFResult(results.PermError, 'Validation for "include:' + mechanism.value + '" missed');
+            }
+
+            if (this.match(mechanism)) {
+                const result = new SPFResult(mechanism.prefixdesc);
+
+                result.mechanism = mechanism.type;
+                result.matched = [mechanism.type];
+
+                if (mechanism.type === 'include') {
+                    result.matched = _.merge(result.matched, mechanism.evaluated.matched);
+                }
+
+                return result;
+            }
+        }
+
+        // If none of the mechanisms match, then returns a result of "Neutral",
+        // just as if "?all" were specified as the last directive.
+        return new SPFResult(results.FailInclude);
+    }
+
 
     match(mechanism, addr) {
         switch (mechanism.type) {
