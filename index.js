@@ -17,12 +17,17 @@ const messages = {
     SoftFail: 'Domain believes the host is not authorized but is not willing to make that strong of a statement',
     TempError: 'Encountered a transient error while performing the check',
     PermError: 'Domain\'s published records could not be correctly interpreted',
-    FailInclude: 'Domain\'s published records does not include the SPF include record',
 };
 
 /** Result values (ex. {None: 'None', Neutral: 'Neutral', ...}). */
 const results = _.mapValues(messages, _.nthArg(1));
 
+/**
+ * SPF result.
+ * @typedef {Object} SPFResult
+ * @property {string} result - An string value of results constant. available values: None, Neutral, Pass, Fail, SoftFail, TempError, PermError.
+ * @property {string} message - Description text.
+ */
 class SPFResult {
     constructor(result, message) {
         if (!_.has(results, result)) {
@@ -262,7 +267,7 @@ class SPF {
             mechanisms = await this.resolveSPF(this.domain, rrtype);
         } catch (err) {
             if (err instanceof SPFResult) {
-                return err;
+                throw err;
             }
 
             throw new SPFResult(results.TempError, err.message);
@@ -333,7 +338,11 @@ class SPF {
     }
 
 
-
+    /**
+     *
+     * @param {string} domain domain to check it is included
+     * @returns {Promise<SPFResult>}
+     */
     async checkInclude(domain) {
         if (!tlsjs.isValid(this.domain)) {
             return new SPFResult(results.None, 'No SPF record can be found on malformed domain');
@@ -354,11 +363,11 @@ class SPF {
     async evaluateInclude(mechanisms, domain) {
         const includeMechanisms = mechanisms.filter(m => m.type === 'include')
         if (includeMechanisms.length === 0) {
-            return new SPFResult(results.FailInclude);
+            return new SPFResult(results.Fail);
         }
         for (let i = 0; i < includeMechanisms.length; i++) {
             const mechanism = includeMechanisms[i];
-            if (mechanism.value === domain) {
+            if (mechanism.value && mechanism.value.toLowerCase() === domain.toLowerCase()) {
                 return new SPFResult(results.Pass);
             }
             if (!this.options.prefetch && mechanism.resolve) {
@@ -389,7 +398,7 @@ class SPF {
 
         // If none of the mechanisms match, then returns a result of "Neutral",
         // just as if "?all" were specified as the last directive.
-        return new SPFResult(results.FailInclude);
+        return new SPFResult(results.Fail);
     }
 
 
