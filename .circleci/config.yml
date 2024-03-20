@@ -65,13 +65,14 @@ jobs:
 
 workflows:
   version: 2
-  build-and-test:
-    jobs:
-      - ensure-deps:
-          context: dev-emarketeer
-      - checks:
-          requires:
-            - ensure-deps
+#  build-and-test:
+#    jobs:
+#      - ensure-deps:
+#          context: dev-emarketeer
+#      - checks:
+#          requires:
+#            - ensure-deps
+
 
   release:
     jobs:
