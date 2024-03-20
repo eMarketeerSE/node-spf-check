@@ -1,11 +1,16 @@
 {
-  "name": "spf-check",
-  "version": "0.4.3",
+  "name": "@emarketeer/spf-check",
+  "version": "0.1.0",
+  "author": "eMarketeer AB <dev@emarketeer.com>",
   "description": "SPF validator",
   "keywords": [
     "spf",
     "dns"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eMarketeerSE/node-spf-check"
+  },
   "license": "MIT",
   "dependencies": {
     "ipaddr.js": "^1.8.1",
@@ -18,7 +23,8 @@
     "jasmine-spec-reporter": "^4.2.1",
     "karma": "^6.4.3",
     "karma-jasmine": "^5.1.0",
-    "nyc": "^13.1.0"
+    "nyc": "^13.1.0",
+    "semantic-release": "^19.0.2"
   },
   "scripts": {
     "test": "jasmine",
@@ -30,5 +36,8 @@
     "exclude": [
       "spec/"
     ]
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

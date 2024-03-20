@@ -50,15 +50,33 @@ jobs:
           path: reports/junit
       - store_artifacts:
           path: reports/junit
-
+  release:
+    docker:
+      - image: "cimg/node:lts"
+    steps:
+      - checkout
+      - run:
+          name: yarn
+          command: yarn
+      - run:
+          name: release
+          command: yarn semantic-release
 
 
 workflows:
   version: 2
-  build-and-test:
+  test-and-release:
     jobs:
       - ensure-deps:
           context: dev-emarketeer
       - checks:
           requires:
             - ensure-deps
+      - release:
+          requires:
+            - checks
+          filters:
+            branches:
+              only:
+                - master
+                - beta
