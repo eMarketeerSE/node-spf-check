@@ -5,11 +5,11 @@ const spf = require('../index');
 
 describe('spf-check', () => {
     it('returns None when IP address is not valid', async () => {
-        await expectAsync(spf('127.0.0.256', 'example.com')).toBeResolvedTo(spf.None);
+        await expectAsync(spf('127.0.0.256', 'example.com')).toBeResolvedTo(spf.SPFResults.None);
     });
 
     it('returns None when hostname is not valid', async () => {
-        await expectAsync(spf('127.0.0.1', '<invalid-hostname>')).toBeResolvedTo(spf.None);
+        await expectAsync(spf('127.0.0.1', '<invalid-hostname>')).toBeResolvedTo(spf.SPFResults.None);
     });
 
     it('returns TempError when dns.resolve fails', async () => {
@@ -18,7 +18,7 @@ describe('spf-check', () => {
             callback(new Error('queryTxt ESERVFAIL example.com'));
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.TempError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.TempError);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -42,7 +42,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ', 'redirect=_spf.example.com' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.TempError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.TempError);
 
         expect(resolve).toHaveBeenCalledTimes(4);
     });
@@ -53,7 +53,7 @@ describe('spf-check', () => {
             callback(new Error('queryTxt ENOTFOUND example.com'));
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.None);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.None);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -64,7 +64,7 @@ describe('spf-check', () => {
             callback(null, []);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.None);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.None);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -75,7 +75,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ', 'redirect=_spf.example.com' ], [ 'v=spf1 ip4:192.168.0.1/32 -all' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.PermError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.PermError);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -86,7 +86,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ', '' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.PermError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.PermError);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -97,7 +97,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ip12:12.12.12.12/24 -none' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.PermError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.PermError);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -160,7 +160,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ', 'redirect=_spf.example.com' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.PermError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.PermError);
 
         // This are 10 calls for each mechanism and one call for the A records
         // of the MX exchange.
@@ -189,7 +189,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ', 'mx +all' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.PermError);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.PermError);
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
@@ -205,7 +205,7 @@ describe('spf-check', () => {
             callback(null, [ '192.168.0.7' ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Neutral);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Neutral);
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
@@ -221,7 +221,7 @@ describe('spf-check', () => {
             callback(null, [ '127.0.0.1' ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
@@ -241,7 +241,7 @@ describe('spf-check', () => {
             callback(null, [ '127.0.0.1' ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(3);
     });
@@ -252,7 +252,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ip4:127.0.0.1' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -263,7 +263,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 ip6:2001:DB8::CB01' ] ]);
         });
 
-        await expectAsync(spf('2001:DB8::CB01', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('2001:DB8::CB01', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(1);
     });
@@ -279,7 +279,7 @@ describe('spf-check', () => {
             callback(null, [ [ 'v=spf1 +all' ] ]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
@@ -295,7 +295,7 @@ describe('spf-check', () => {
             callback(null, [['v=spf1 +all']]);
         });
 
-        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.Pass);
+        await expectAsync(spf('127.0.0.1', 'example.com')).toBeResolvedTo(spf.SPFResults.Pass);
 
         expect(resolve).toHaveBeenCalledTimes(2);
     });
@@ -316,15 +316,15 @@ describe('spf-check', () => {
         });
 
         let s = new spf.SPF('example.com');
-        await expectAsync(s.checkInclude('_spf1.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Pass}));
+        await expectAsync(s.checkInclude('_spf1.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.SPFResults.Pass}));
 
         expect(resolve).toHaveBeenCalledTimes(1);
         resolve.calls.reset()
 
-        await expectAsync(s.checkInclude('_spf2.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Pass}));
+        await expectAsync(s.checkInclude('_spf2.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.SPFResults.Pass}));
 
         expect(resolve).toHaveBeenCalledTimes(2);
 
-        await expectAsync(s.checkInclude('_spf3.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.Fail}));
+        await expectAsync(s.checkInclude('_spf3.example.com')).toBeResolvedTo(jasmine.objectContaining({result: spf.SPFResults.Fail}));
     });
 });

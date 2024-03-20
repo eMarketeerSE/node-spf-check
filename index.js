@@ -19,16 +19,26 @@ const messages = {
     PermError: 'Domain\'s published records could not be correctly interpreted',
 };
 
-/** Result values (ex. {None: 'None', Neutral: 'Neutral', ...}). */
+/**
+ * @typedef ResultEnum
+ * @property {string} None "None"
+ * @property {string} Neutral "Neutral"
+ * @property {string} Pass "Pass"
+ * @property {string} Fail "Fail"
+ * @property {string} SoftFail "SoftFail"
+ * @property {string} TempError "TempError"
+ * @property {string} PermError "PermError"
+ */
+/**
+ * @type {ResultEnum} results
+ */
 const results = _.mapValues(messages, _.nthArg(1));
 
-/**
- * SPF result.
- * @typedef {Object} SPFResult
- * @property {string} result - An string value of results constant. available values: None, Neutral, Pass, Fail, SoftFail, TempError, PermError.
- * @property {string} message - Description text.
- */
 class SPFResult {
+    /**
+     * @property {string} result - An string value of results constant. available values: None, Neutral, Pass, Fail, SoftFail, TempError, PermError.
+     * @property {string} message - Description text.
+     */
     constructor(result, message) {
         if (!_.has(results, result)) {
             throw TypeError('Result "' + result + '" not found');
@@ -38,10 +48,17 @@ class SPFResult {
             message = messages[result];
         }
 
-        /** An string value of results constant. */
+
+        /**
+         * @type {"None"|"Neutral"|"Pass"|"Fail"|"SoftFail"|"TempError"|"PermError"}
+         * @public
+         */
         this.result = result;
 
-        /** Description text. */
+        /**
+         * @type {string}
+         * @public
+         */
         this.message = message;
 
         /** Last matched mechanism or "default" if none. Used in Received-SPF
@@ -53,7 +70,22 @@ class SPFResult {
     }
 }
 
+/**
+ * @typedef {Object} SPFOptions
+ * @property {number} [version=1] - SPF version, conforms to https://tools.ietf.org/html/rfc4408
+ * @property {boolean} [prefetch=false] - Resolve all mechanisms before evaluating them.
+ * This will cause many DNS queries to be made and possible hit the 10 queries hard limit.
+ * Note that "redirect" mechanisms always resolve first no matter the value of this option.
+ * @property {number} [maxDNS=10] - Hard limit on the number of DNS lookups, including any lookups
+ * caused by the use of the "include" mechanism or the "redirect" modifier.
+ */
+
 class SPF {
+    /**
+     * @param {string} domain - Domain to check.
+     * @param {string} [sender] - Sender email address.
+     * @param {SPFOptions} [options]
+     */
     constructor(domain, sender, options) {
         if (_.isObject(domain) && _.isUndefined(sender) && _.isUndefined(options)) {
             options = domain;
@@ -339,18 +371,18 @@ class SPF {
 
 
     /**
-     *
-     * @param {string} domain domain to check it is included
+     * Check if the instance domain includes requiredDomain in its SPF records
+     * @param {string} requiredDomain domain to check it is included
      * @returns {Promise<SPFResult>}
      */
-    async checkInclude(domain) {
+    async checkInclude(requiredDomain) {
         if (!tlsjs.isValid(this.domain)) {
             return new SPFResult(results.None, 'No SPF record can be found on malformed domain');
         }
 
         try {
             let mechanisms = await this.getMechanisms('A')
-            return await this.evaluateInclude(mechanisms, domain);
+            return await this.evaluateInclude(mechanisms, requiredDomain);
         } catch (err) {
             if (err instanceof SPFResult) {
                 return err;
@@ -458,7 +490,5 @@ module.exports = async function(ip, domain, sender, options) {
     return res.result;
 };
 
-module.exports = _.merge(module.exports, results);
-
-module.exports.SPFResult = SPFResult;
+module.exports.SPFResults = results;
 module.exports.SPF = SPF;

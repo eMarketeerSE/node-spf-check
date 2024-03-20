@@ -7,6 +7,7 @@
     "spf",
     "dns"
   ],
+  "typings": "types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/eMarketeerSE/node-spf-check"
@@ -24,13 +25,15 @@
     "karma": "^6.4.3",
     "karma-jasmine": "^5.1.0",
     "nyc": "^13.1.0",
-    "semantic-release": "^19.0.2"
+    "semantic-release": "^19.0.2",
+    "typescript": "^5.4.2"
   },
   "scripts": {
     "test": "jasmine",
     "testcov": "nyc jasmine",
     "htmlcov": "nyc report --reporter=html",
-    "lcov": "nyc report --reporter=text-lcov"
+    "lcov": "nyc report --reporter=text-lcov",
+    "gen-types": "npx tsc --declaration --emitDeclarationOnly"
   },
   "nyc": {
     "exclude": [
