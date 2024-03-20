@@ -1,6 +1,7 @@
 {
-  "name": "spf-check",
-  "version": "0.4.3",
+  "name": "@emarketeer/spf-check",
+  "version": "0.1.0",
+  "author": "eMarketeer AB <dev@emarketeer.com>",
   "description": "SPF validator",
   "keywords": [
     "spf",
@@ -18,7 +19,8 @@
     "jasmine-spec-reporter": "^4.2.1",
     "karma": "^6.4.3",
     "karma-jasmine": "^5.1.0",
-    "nyc": "^13.1.0"
+    "nyc": "^13.1.0",
+    "semantic-release": "^19.0.2"
   },
   "scripts": {
     "test": "jasmine",
