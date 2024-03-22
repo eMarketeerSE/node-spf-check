@@ -392,22 +392,48 @@ class SPF {
         }
     }
 
-    async evaluateInclude(mechanisms, domain) {
-        const includeMechanisms = mechanisms.filter(m => m.type === 'include')
+    /**
+     * @private
+     * @param mechanisms
+     * @param domain
+     * @param {any[]} [includeMechanisms=[]]
+     * @returns {Promise<SPFResult>}
+     */
+    async evaluateInclude(mechanisms, domain, includeMechanisms) {
+        if (!includeMechanisms) {
+            includeMechanisms = [];
+        }
+        includeMechanisms.push(...mechanisms.filter(m => m.type === 'include'));
         if (includeMechanisms.length === 0) {
             return new SPFResult(results.Fail);
         }
+        // loop first once to see if there is a direct match
         for (let i = 0; i < includeMechanisms.length; i++) {
             const mechanism = includeMechanisms[i];
             if (mechanism.value && mechanism.value.toLowerCase() === domain.toLowerCase()) {
                 return new SPFResult(results.Pass);
             }
+        }
+        // then go over all the includes recursively in a BFS manner
+        for (let i = 0; i < includeMechanisms.length; i++) {
+            const mechanism = includeMechanisms[i];
             if (!this.options.prefetch && mechanism.resolve) {
+                try {
                 _.assign(mechanism, await mechanism.resolve());
+                } catch (err) {
+                    if (err instanceof SPFResult) {
+                        if (err.result === results.None) {
+                            continue;
+                        }
+                        throw err
+                    }
+
+                }
             }
 
             if (mechanism.type === 'include') {
-                mechanism.evaluated = await this.evaluateInclude(mechanism.includes, domain);
+                includeMechanisms = includeMechanisms.slice(i + 1)
+                mechanism.evaluated = await this.evaluateInclude(mechanism.includes, domain, includeMechanisms);
             }
 
             if (mechanism.evaluated.result === results.None) {

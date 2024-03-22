@@ -117,7 +117,14 @@ declare class SPF {
      * @returns {Promise<SPFResult>}
      */
     checkInclude(requiredDomain: string): Promise<SPFResult>;
-    evaluateInclude(mechanisms: any, domain: any): Promise<SPFResult>;
+    /**
+     * @private
+     * @param mechanisms
+     * @param domain
+     * @param {any[]} [includeMechanisms=[]]
+     * @returns {Promise<SPFResult>}
+     */
+    private evaluateInclude;
     match(mechanism: any, addr: any): any;
 }
 declare class SPFResult {
